@@ -106,7 +106,16 @@ class ResultsUpdater:
 
 if __name__ == "__main__":
     DATABASE_URL = os.environ["DATABASE_URL"]
-    LEAGUE_ID = os.environ.get("THESPORTSDB_LEAGUE_ID", "4328")  # English Premier League default
-    THESPORTSDB_API_KEY = os.environ.get("THESPORTSDB_API_KEY", "1")
-    updater = ResultsUpdater(DATABASE_URL, LEAGUE_ID, THESPORTSDB_API_KEY)
+    league_ids = [
+        ("English Premier League", "4328"),
+        ("Spanish La Liga", "4335"),
+        ("German Bundesliga", "4331"),
+        ("Italian Serie A", "4332"),
+        ("French Ligue 1", "4334"),
+    ]
+THESPORTSDB_API_KEY = os.environ.get("THESPORTSDB_API_KEY", "1")
+for league_name, league_id in league_ids:
+    print(f"\nUpdating results for: {league_name} (League ID: {league_id})")
+    updater = ResultsUpdater(DATABASE_URL, league_id, THESPORTSDB_API_KEY)
     updater.update()
+
