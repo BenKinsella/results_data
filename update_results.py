@@ -4,7 +4,7 @@ import psycopg2
 import requests
 import logging
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # Set up logging as in your odds scraper
 logging.basicConfig(
