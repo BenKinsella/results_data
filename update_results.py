@@ -38,11 +38,12 @@ class ResultsUpdaterSportAPI:
     def fetch_pinnacle_events(self):
         try:
             with self.conn.cursor() as cursor:
+                cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
                 cursor.execute("""
                     SELECT DISTINCT event_id, home_team, away_team, starts
                     FROM odds1x2
-                    WHERE starts < NOW()
-                """)
+                    WHERE starts < %s
+                """, (cutoff_time,))
                 rows = cursor.fetchall()
             return [
                 {
@@ -57,7 +58,7 @@ class ResultsUpdaterSportAPI:
             return []
 
     def fetch_sportapi_events_for_date(self, date_str):
-        url = f"https://{self.api_host}/api/v1/sport/football/scheduled-events/{date_str}"
+        url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{date_str}"
         headers = {
             "X-RapidAPI-Key": self.api_key,
             "X-RapidAPI-Host": self.api_host
@@ -153,7 +154,7 @@ if __name__ == "__main__":
     TOURNAMENT_ID = 384  # Premier League ID for SportAPI
 
     start_date = datetime.strptime("2025-11-01", "%Y-%m-%d").date()
-    end_date = datetime.strptime("2025-11-10", "%Y-%m-%d").date()
+    end_date = datetime.strptime("2025-11-01", "%Y-%m-%d").date()
 
     updater = ResultsUpdaterSportAPI(
         database_url=DATABASE_URL,
