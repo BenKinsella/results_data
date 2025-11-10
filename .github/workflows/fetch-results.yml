@@ -25,5 +25,5 @@ jobs:
       - name: Update match results from TheSportsDB
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          # THESPORTSDB_API_KEY: ${{ secrets.THESPORTSDB_API_KEY }} # optional, defaults to '1'
+          THESPORTSDB_API_KEY: ${{ secrets.SPORTAPI_KEY }}
         run: python update_results.py
