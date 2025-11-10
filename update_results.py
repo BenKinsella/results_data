@@ -118,7 +118,7 @@ class ResultsUpdaterSportAPI:
 if __name__ == "__main__":
     DATABASE_URL = os.environ["DATABASE_URL"]
     SPORTAPI_KEY = os.environ["SPORTAPI_KEY"]
-    SPORTAPI_HOST = os.environ["SPORTAPI_HOST"]  # e.g., "sportapi.example.com"
+    SPORTAPI_HOST = os.environ.get("SPORTAPI_HOST", "sportapi7.p.rapidapi.com")
     TOURNAMENT_ID = 384  # Premier League example
 
     # Define your date range (e.g. last 45 days)
