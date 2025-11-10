@@ -20,26 +20,26 @@ class ResultsUpdaterSportAPI:
         if self.conn:
             self.conn.close()
 
-    def fetch_past_pinnacle_events(self):
+    def fetch_pinnacle_events(self):
         with self.conn.cursor() as cursor:
             cursor.execute("""
-                SELECT event_id, home_team, away_team, starts
+                SELECT DISTINCT event_id, home_team, away_team, starts
                 FROM odds1x2
                 WHERE starts < NOW()
             """)
             rows = cursor.fetchall()
-        # Build a list of dictionaries for easier fuzzy matching
+        # Normalize names and keep for matching
         return [
             {
                 "event_id": r[0],
-                "home_team": r[1].strip().lower(),
-                "away_team": r[2].strip().lower(),
+                "home_team": r[1].strip().lower() if r[1] else "",
+                "away_team": r[2].strip().lower() if r[2] else "",
                 "starts": r[3]
             } for r in rows
         ]
 
     def fetch_sportapi_events_for_date(self, date_str):
-        url = f"https://sportapi7.p.rapidapi.com/api/v1/sport/football/scheduled-events/{date_str}"
+        url = f"https://{self.api_host}/api/v1/sport/football/scheduled-events/{date_str}"
         headers = {
             "X-RapidAPI-Key": self.api_key,
             "X-RapidAPI-Host": self.api_host
@@ -50,58 +50,50 @@ class ResultsUpdaterSportAPI:
 
     def match_and_insert_results(self, pinnacle_events, sportapi_events):
         insert_query = """
-            INSERT INTO results (home_team, away_team, starts, home_score, away_score)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO results (event_id, home_team, away_team, starts, home_score, away_score)
+            VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT DO NOTHING
         """
         count = 0
         with self.conn.cursor() as cursor:
-            for event in sportapi_events:
-                # Only completed events with valid scores
-                status_type = event.get("status", {}).get("type")
+            for api_event in sportapi_events:
+                status_type = api_event.get("status", {}).get("type")
                 if status_type != "finished":
                     continue
-                sportapi_home = event.get("homeTeam", {}).get("name", "").strip().lower()
-                sportapi_away = event.get("awayTeam", {}).get("name", "").strip().lower()
-                # Must match the tournament
-                if str(event.get("tournament", {}).get("id")) != str(self.tournament_id):
+                # Tournament check
+                if str(api_event.get("tournament", {}).get("id")) != str(self.tournament_id):
                     continue
-                # Scores
-                home_score = event.get("homeScore", {}).get("normaltime")
-                away_score = event.get("awayScore", {}).get("normaltime")
+                home_score = api_event.get("homeScore", {}).get("normaltime")
+                away_score = api_event.get("awayScore", {}).get("normaltime")
                 if home_score is None or away_score is None:
                     continue
-                # Start time as datetime
-                starts_dt = datetime.fromtimestamp(event.get("startTimestamp"))
-                
-                # Fuzzy match in Pinnacle odds by teams and within 2 days
+                api_home = api_event.get("homeTeam", {}).get("name", "").strip().lower()
+                api_away = api_event.get("awayTeam", {}).get("name", "").strip().lower()
+                api_start = datetime.fromtimestamp(api_event.get("startTimestamp"))
+                # Attempt Pinnacle match by teams (normalized) and within 2 days
                 for p_event in pinnacle_events:
-                    p_home = p_event["home_team"]
-                    p_away = p_event["away_team"]
-                    p_starts = p_event["starts"]
-                    # Team and time fuzzy check
                     if (
-                        sportapi_home == p_home and
-                        sportapi_away == p_away and
-                        abs((starts_dt.date() - p_starts.date()).days) <= 2
+                        api_home == p_event["home_team"] and
+                        api_away == p_event["away_team"] and
+                        abs((api_start.date() - p_event["starts"].date()).days) <= 2
                     ):
                         cursor.execute(insert_query, (
-                            event.get("homeTeam", {}).get("name"),
-                            event.get("awayTeam", {}).get("name"),
-                            starts_dt,
+                            p_event["event_id"],
+                            api_event.get("homeTeam", {}).get("name"),
+                            api_event.get("awayTeam", {}).get("name"),
+                            api_start,
                             home_score,
                             away_score
                         ))
                         count += 1
-                        break   # Only match one result per Pinnacle event
+                        break  # Only first match for this Pinnacle event
         self.conn.commit()
-        print(f"Inserted {count} matched finished matches for this batch.")
+        print(f"Inserted {count} matched finished matches in this batch.")
 
     def update(self):
         self.connect_db()
         try:
-            pinnacle_events = self.fetch_past_pinnacle_events()
-            # Process each date from start_date to end_date (inclusive)
+            pinnacle_events = self.fetch_pinnacle_events()
             cur_date = self.start_date
             while cur_date <= self.end_date:
                 date_str = cur_date.strftime('%Y-%m-%d')
@@ -119,11 +111,10 @@ if __name__ == "__main__":
     DATABASE_URL = os.environ["DATABASE_URL"]
     SPORTAPI_KEY = os.environ.get("SPORTAPI_KEY")
     SPORTAPI_HOST = os.environ.get("SPORTAPI_HOST", "sportapi7.p.rapidapi.com")
-    TOURNAMENT_ID = 384  # Premier League example
+    TOURNAMENT_ID = 384  # Premier League ID for SportAPI
 
-    # Define your date range (e.g. last 45 days)
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=45)
+    start_date = datetime.strptime("2025-11-01", "%Y-%m-%d").date()
+    end_date = datetime.strptime("2025-11-10", "%Y-%m-%d").date()
 
     updater = ResultsUpdaterSportAPI(
         database_url=DATABASE_URL,
