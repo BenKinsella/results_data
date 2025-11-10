@@ -75,7 +75,7 @@ class ResultsUpdaterSportAPI:
                     if (
                         api_home == p_event["home_team"] and
                         api_away == p_event["away_team"] and
-                        abs((api_start.date() - p_event["starts"].date()).days) <= 2
+                        abs((api_start.date() - p_event["starts"].date()).days) <= 14
                     ):
                         cursor.execute(insert_query, (
                             p_event["event_id"],
