@@ -38,7 +38,7 @@ class ResultsUpdaterSportAPI:
     def fetch_pinnacle_events(self):
         try:
             with self.conn.cursor() as cursor:
-                cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(hours=3)
+                cutoff_time = datetime.now(timezone.utc) - timedelta(hours=3)
                 cursor.execute("""
                     SELECT DISTINCT event_id, home_team, away_team, starts
                     FROM odds1x2
