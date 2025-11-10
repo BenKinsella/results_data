@@ -116,7 +116,7 @@ class ResultsUpdaterSportAPI:
             self.close_db()
 
 if __name__ == "__main__":
-    DATABASE_URL = os.environ.get["DATABASE_URL"]
+    DATABASE_URL = os.environ["DATABASE_URL"]
     SPORTAPI_KEY = os.environ.get["SPORTAPI_KEY"]
     SPORTAPI_HOST = os.environ.get("SPORTAPI_HOST", "sportapi7.p.rapidapi.com")
     TOURNAMENT_ID = 384  # Premier League example
